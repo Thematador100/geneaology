@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Real Estate Genealogy Pro - Property Heir Research Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1e40af;
+            --secondary: #7c3aed;
+            --accent: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--light);
+            color: var(--dark);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            min-height: 100vh;
+            background: var(--light);
+        }
+
+        .sidebar {
+            background: var(--gradient-primary);
+            padding: 2rem 1.5rem;
+            box-shadow: var(--shadow-xl);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .logo {
+            color: white;
+            font-size: 1.75rem;
+            font-weight: 800;
+            margin-bottom: 3rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo i {
+            font-size: 2rem;
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-section {
+            margin-bottom: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .nav-section-title {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1rem;
+            padding-left: 1rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            border-radius: 16px;
+            margin-bottom: 0.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+            font-size: 0.95rem;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            transform: translateX(8px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            padding: 2rem;
+            background: var(--light);
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .header-left h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-left p {
+            color: var(--gray-600);
+            font-size: 1.1rem;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .ai-status {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: var(--success);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            box-shadow: var(--shadow-lg);
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { 
+                box-shadow: var(--shadow-lg), 0 0 0 0 rgba(16, 185, 129, 0.4);
+            }
+            50% { 
+                box-shadow: var(--shadow-lg), 0 0 0 10px rgba(16, 185, 129, 0);
+            }
+        }
+
+        .ai-pulse {
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.3); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .card {
+            background: white;
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--gray-200);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .upload-area {
+            border: 3px dashed var(--gray-300);
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            background: var(--gray-100);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: rgba(30, 64, 175, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: var(--gray-400);
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-subtext {
+            color: var(--gray-500);
+            font-size: 0.95rem;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .search-container {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .search-input {
+            padding: 1.25rem 1.5rem;
+            border: 2px solid var(--gray-300);
+            border-radius: 16px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+        }
+
+        .results-container {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            margin-top: 2rem;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .results-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .result-item {
+            padding: 1.5rem;
+            background: var(--gray-100);
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .result-item h4 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .property-list {
+            display: grid;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .property-item {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 16px;
+            box-shadow: var(--shadow-md);
+            border-left: 4px solid var(--success);
+            transition: all 0.3s ease;
+        }
+
+        .property-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .property-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .property-address {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .property-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .property-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .property-detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .property-detail:last-child {
+            border-bottom: none;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--gray-300);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .notification {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: var(--success);
+        }
+
+        .notification.error {
+            background: var(--danger);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 24px;
+            padding: 3rem;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: var(--shadow-xl);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { transform: translate(-50%, -60%); opacity: 0; }
+            to { transform: translate(-50%, -50%); opacity: 1; }
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .analytics-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .analytics-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .analytics-number {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .analytics-label {
+            color: var(--gray-600);
+            font-weight: 600;
+        }
+
+        @media (max-width: 1024px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <div class="logo">
+                <i class="fas fa-home"></i>
+                <span>RealEstate AI</span>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-section-title">Research Tools</div>
+                <div class="nav-item active" onclick="showDashboard()">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item" onclick="showUpload()">
+                    <i class="fas fa-upload"></i>
+                    <span>Upload Data</span>
+                </div>
+                <div class="nav-item" onclick="showResearch()">
+                    <i class="fas fa-search"></i>
+                    <span>Research</span>
+                </div>
+                <div class="nav-item" onclick="showProperties()">
+                    <i class="fas fa-building"></i>
+                    <span>Properties</span>
+                </div>
+            </div>
+        </nav>
+        
+        <main class="main-content">
+            <header class="header">
+                <div class="header-left">
+                    <h1>Real Estate Genealogy Intelligence</h1>
+                    <p>AI-powered heir research and property genealogy platform</p>
+                </div>
+                <div class="header-right">
+                    <div class="ai-status">
+                        <div class="ai-pulse"></div>
+                        <span>AI Systems Active</span>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Dashboard View -->
+            <div id="dashboard-view">
+                <div class="analytics-grid" id="analytics-grid">
+                    <!-- Analytics will be loaded here -->
+                </div>
+                
+                <div class="card">
+                    <h2 style="margin-bottom: 1.5rem; font-size: 2rem; font-weight: 800;">🚀 Quick Start</h2>
+                    <p style="margin-bottom: 2rem; color: var(--gray-600); font-size: 1.1rem;">
+                        Get started by uploading your overage data files or begin researching properties and heirs.
+                    </p>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="showUpload()">
+                            <i class="fas fa-upload"></i>
+                            <span>Upload Overage Data</span>
+                        </button>
+                        <button class="btn btn-success" onclick="showResearch()">
+                            <i class="fas fa-search"></i>
+                            <span>Start Research</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Upload View -->
+            <div id="upload-view" style="display: none;">
+                <div class="card">
+                    <h2 style="margin-bottom: 1.5rem; font-size: 2rem; font-weight: 800;">📁 Upload Overage Data</h2>
+                    <p style="margin-bottom: 2rem; color: var(--gray-600);">
+                        Upload your CSV or Excel files containing property overage data. The system will automatically process and store the information.
+                    </p>
+                    
+                    <div class="upload-area" id="upload-area">
+                        <div class="upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <div class="upload-text">Drop files here or click to browse</div>
+                        <div class="upload-subtext">Supports CSV and Excel files up to 16MB</div>
+                        <input type="file" id="file-input" accept=".csv,.xlsx,.xls" style="display: none;" multiple>
+                    </div>
+                    
+                    <div id="upload-progress" style="display: none; margin-top: 2rem;">
+                        <div class="loading-spinner"></div>
+                        <p style="text-align: center; margin-top: 1rem;">Processing files...</p>
+                    </div>
+                    
+                    <div id="upload-results" style="display: none; margin-top: 2rem;"></div>
+                </div>
+            </div>
+            
+            <!-- Research View -->
+            <div id="research-view" style="display: none;">
+                <div class="card">
+                    <h2 style="margin-bottom: 1.5rem; font-size: 2rem; font-weight: 800;">🔍 AI Research Center</h2>
+                    <p style="margin-bottom: 2rem; color: var(--gray-600);">
+                        Search for properties, owners, or individuals to start AI-powered genealogy research.
+                    </p>
+                    
+                    <div class="search-container">
+                        <input type="text" class="search-input" placeholder="Enter property address, owner name, or person to research..." id="research-input">
+                        <button class="btn btn-primary" onclick="startResearch()">
+                            <i class="fas fa-search"></i>
+                            <span>Research</span>
+                        </button>
+                    </div>
+                    
+                    <div id="research-results" style="display: none;"></div>
+                </div>
+            </div>
+            
+            <!-- Properties View -->
+            <div id="properties-view" style="display: none;">
+                <div class="card">
+                    <h2 style="margin-bottom: 1.5rem; font-size: 2rem; font-weight: 800;">🏠 Property Database</h2>
+                    <p style="margin-bottom: 2rem; color: var(--gray-600);">
+                        View and manage all properties in your database.
+                    </p>
+                    
+                    <button class="btn btn-primary" onclick="loadProperties()" style="margin-bottom: 2rem;">
+                        <i class="fas fa-refresh"></i>
+                        <span>Refresh Properties</span>
+                    </button>
+                    
+                    <div id="properties-list"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <div id="notification" class="notification"></div>
+    
+    <script>
+        let currentView = 'dashboard';
+        
+        // Navigation
+        function showDashboard() {
+            switchView('dashboard');
+            loadAnalytics();
+        }
+        
+        function showUpload() {
+            switchView('upload');
+        }
+        
+        function showResearch() {
+            switchView('research');
+        }
+        
+        function showProperties() {
+            switchView('properties');
+            loadProperties();
+        }
+        
+        function switchView(view) {
+            // Hide all views
+            document.querySelectorAll('[id$="-view"]').forEach(el => el.style.display = 'none');
+            
+            // Show selected view
+            document.getElementById(view + '-view').style.display = 'block';
+            
+            // Update nav
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            event?.target?.closest('.nav-item')?.classList.add('active');
+            
+            currentView = view;
+        }
+        
+        // File Upload
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadArea = document.getElementById('upload-area');
+            const fileInput = document.getElementById('file-input');
+            
+            uploadArea.addEventListener('click', () => fileInput.click());
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                handleFiles(e.dataTransfer.files);
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                handleFiles(e.target.files);
+            });
+            
+            // Load analytics on start
+            loadAnalytics();
+        });
+        
+        function handleFiles(files) {
+            if (files.length === 0) return;
+            
+            document.getElementById('upload-progress').style.display = 'block';
+            document.getElementById('upload-results').style.display = 'none';
+            
+            const formData = new FormData();
+            formData.append('file', files[0]);
+            
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('upload-progress').style.display = 'none';
+                
+                if (data.success) {
+                    document.getElementById('upload-results').innerHTML = `
+                        <div class="results-container">
+                            <h3 style="color: var(--success); margin-bottom: 1rem;">
+                                <i class="fas fa-check-circle"></i> Upload Successful!
+                            </h3>
+                            <div class="results-grid">
+                                <div class="result-item">
+                                    <h4>File Processed</h4>
+                                    <p>${data.filename}</p>
+                                </div>
+                                <div class="result-item">
+                                    <h4>Records Added</h4>
+                                    <p>${data.records_processed} properties</p>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="showProperties()" style="margin-top: 1rem;">
+                                <i class="fas fa-eye"></i>
+                                <span>View Properties</span>
+                            </button>
+                        </div>
+                    `;
+                    showNotification('File uploaded successfully!', 'success');
+                    loadAnalytics(); // Refresh analytics
+                } else {
+                    document.getElementById('upload-results').innerHTML = `
+                        <div class="results-container">
+                            <h3 style="color: var(--danger); margin-bottom: 1rem;">
+                                <i class="fas fa-exclamation-circle"></i> Upload Failed
+                            </h3>
+                            <p>${data.error}</p>
+                        </div>
+                    `;
+                    showNotification('Upload failed: ' + data.error, 'error');
+                }
+                
+                document.getElementById('upload-results').style.display = 'block';
+            })
+            .catch(error => {
+                document.getElementById('upload-progress').style.display = 'none';
+                showNotification('Upload error: ' + error.message, 'error');
+            });
+        }
+        
+        // Research
+        function startResearch() {
+            const query = document.getElementById('research-input').value.trim();
+            if (!query) {
+                showNotification('Please enter a search query', 'error');
+                return;
+            }
+            
+            document.getElementById('research-results').innerHTML = `
+                <div style="text-align: center; padding: 2rem;">
+                    <div class="loading-spinner"></div>
+                    <p style="margin-top: 1rem;">AI is researching: "${query}"</p>
+                    <p style="font-size: 0.9rem; opacity: 0.7;">Scraping databases and analyzing data...</p>
+                </div>
+            `;
+            document.getElementById('research-results').style.display = 'block';
+            
+            fetch('/api/research', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query: query })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.type === 'property_research') {
+                    displayPropertyResults(data);
+                } else if (data.type === 'genealogy_research') {
+                    displayGenealogyResults(data);
+                } else if (data.error) {
+                    document.getElementById('research-results').innerHTML = `
+                        <div class="results-container">
+                            <h3 style="color: var(--warning);">
+                                <i class="fas fa-info-circle"></i> ${data.error}
+                            </h3>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                document.getElementById('research-results').innerHTML = `
+                    <div class="results-container">
+                        <h3 style="color: var(--danger);">
+                            <i class="fas fa-exclamation-circle"></i> Research Error
+                        </h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            });
+        }
+        
+        function displayPropertyResults(data) {
+            const property = data.property_data;
+            const heirs = data.heirs || [];
+            
+            document.getElementById('research-results').innerHTML = `
+                <div class="results-container">
+                    <div class="results-header">
+                        <h3 style="color: var(--success);">
+                            <i class="fas fa-check-circle"></i> Property Research Complete
+                        </h3>
+                    </div>
+                    
+                    <div class="property-item">
+                        <div class="property-header">
+                            <div class="property-address">${property.address}</div>
+                            <div class="property-value">${property.property_value}</div>
+                        </div>
+                        <div class="property-details">
+                            <div class="property-detail">
+                                <span>Owner:</span>
+                                <span>${property.owner_name}</span>
+                            </div>
+                            <div class="property-detail">
+                                <span>Overage Amount:</span>
+                                <span style="color: var(--success); font-weight: 600;">${property.overage_amount}</span>
+                            </div>
+                            <div class="property-detail">
+                                <span>Case Number:</span>
+                                <span>${property.case_number || 'N/A'}</span>
+                            </div>
+                            <div class="property-detail">
+                                <span>Status:</span>
+                                <span>${property.status}</span>
+                            </div>
+                        </div>
+                        
+                        ${heirs.length > 0 ? `
+                            <h4 style="margin: 1.5rem 0 1rem 0; color: var(--primary);">Identified Heirs (${heirs.length})</h4>
+                            <div class="results-grid">
+                                ${heirs.map(heir => `
+                                    <div class="result-item">
+                                        <h4>${heir.name}</h4>
+                                        <p><strong>Relationship:</strong> ${heir.relationship}</p>
+                                        ${heir.phone ? `<p><strong>Phone:</strong> ${heir.phone}</p>` : ''}
+                                        ${heir.address ? `<p><strong>Address:</strong> ${heir.address}</p>` : ''}
+                                        <span style="color: ${heir.verified ? 'var(--success)' : 'var(--warning)'};">
+                                            ${heir.verified ? '✓ Verified' : '⚠ Needs Verification'}
+                                        </span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<p style="color: var(--gray-600); margin-top: 1rem;">No heirs found yet. Research may be ongoing.</p>'}
+                        
+                        <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                            <button class="btn btn-primary" onclick="generateDocument(${property.id})">
+                                <i class="fas fa-file-alt"></i>
+                                <span>Generate Affidavit</span>
+                            </button>
+                            <button class="btn btn-success" onclick="researchHeirs('${property.owner_name}')">
+                                <i class="fas fa-users"></i>
+                                <span>Research More Heirs</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function displayGenealogyResults(data) {
+            const genealogy = data.genealogy_data;
+            
+            document.getElementById('research-results').innerHTML = `
+                <div class="results-container">
+                    <div class="results-header">
+                        <h3 style="color: var(--success);">
+                            <i class="fas fa-check-circle"></i> Genealogy Research Complete
+                        </h3>
+                    </div>
+                    
+                    <div class="result-item">
+                        <h4>Subject: ${genealogy.name}</h4>
+                        <p><strong>Age Range:</strong> ${genealogy.age_range}</p>
+                        ${genealogy.phone_numbers.length > 0 ? `<p><strong>Phone Numbers:</strong> ${genealogy.phone_numbers.join(', ')}</p>` : ''}
+                    </div>
+                    
+                    ${genealogy.relatives.length > 0 ? `
+                        <h4 style="margin: 1.5rem 0 1rem 0; color: var(--primary);">Family Members (${genealogy.relatives.length})</h4>
+                        <div class="results-grid">
+                            ${genealogy.relatives.map(relative => `
+                                <div class="result-item">
+                                    <h4>${relative.name}</h4>
+                                    <p><strong>Relationship:</strong> ${relative.relationship}</p>
+                                    <p><strong>Age:</strong> ${relative.age}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    
+                    ${genealogy.addresses.length > 0 ? `
+                        <h4 style="margin: 1.5rem 0 1rem 0; color: var(--primary);">Known Addresses</h4>
+                        <div class="results-grid">
+                            ${genealogy.addresses.map(addr => `
+                                <div class="result-item">
+                                    <h4>${addr.address}</h4>
+                                    <p><strong>Years:</strong> ${addr.years}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        // Properties
+        function loadProperties() {
+            document.getElementById('properties-list').innerHTML = `
+                <div style="text-align: center; padding: 2rem;">
+                    <div class="loading-spinner"></div>
+                    <p style="margin-top: 1rem;">Loading properties...</p>
+                </div>
+            `;
+            
+            fetch('/api/properties')
+            .then(response => response.json())
+            .then(properties => {
+                if (properties.length === 0) {
+                    document.getElementById('properties-list').innerHTML = `
+                        <div style="text-align: center; padding: 3rem; color: var(--gray-500);">
+                            <i class="fas fa-home" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                            <p style="font-size: 1.25rem; margin-bottom: 0.5rem;">No properties found</p>
+                            <p>Upload your overage data to get started</p>
+                            <button class="btn btn-primary" onclick="showUpload()" style="margin-top: 1rem;">
+                                <i class="fas fa-upload"></i>
+                                <span>Upload Data</span>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('properties-list').innerHTML = `
+                        <div class="property-list">
+                            ${properties.map(property => `
+                                <div class="property-item">
+                                    <div class="property-header">
+                                        <div class="property-address">${property.address}</div>
+                                        <div class="property-value">${property.property_value}</div>
+                                    </div>
+                                    <div class="property-details">
+                                        <div class="property-detail">
+                                            <span>Owner:</span>
+                                            <span>${property.owner_name}</span>
+                                        </div>
+                                        <div class="property-detail">
+                                            <span>Overage:</span>
+                                            <span style="color: var(--success); font-weight: 600;">${property.overage_amount}</span>
+                                        </div>
+                                        <div class="property-detail">
+                                            <span>Case #:</span>
+                                            <span>${property.case_number || 'N/A'}</span>
+                                        </div>
+                                        <div class="property-detail">
+                                            <span>Status:</span>
+                                            <span>${property.status}</span>
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 1rem; display: flex; gap: 1rem;">
+                                        <button class="btn btn-primary" onclick="researchProperty('${property.address}')">
+                                            <i class="fas fa-search"></i>
+                                            <span>Research</span>
+                                        </button>
+                                        <button class="btn btn-success" onclick="generateDocument(${property.id})">
+                                            <i class="fas fa-file-alt"></i>
+                                            <span>Generate Doc</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                document.getElementById('properties-list').innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: var(--danger);">
+                        <i class="fas fa-exclamation-circle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                        <p>Error loading properties: ${error.message}</p>
+                    </div>
+                `;
+            });
+        }
+        
+        // Analytics
+        function loadAnalytics() {
+            fetch('/api/analytics')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('analytics-grid').innerHTML = `
+                    <div class="analytics-card">
+                        <div class="analytics-number">${data.properties_analyzed}</div>
+                        <div class="analytics-label">Properties Analyzed</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-number">${data.heirs_found}</div>
+                        <div class="analytics-label">Heirs Identified</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-number">${data.research_completed}</div>
+                        <div class="analytics-label">Research Completed</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-number">${data.total_overage_value}</div>
+                        <div class="analytics-label">Total Overage Value</div>
+                    </div>
+                `;
+            })
+            .catch(error => {
+                console.error('Error loading analytics:', error);
+            });
+        }
+        
+        // Utility functions
+        function researchProperty(address) {
+            document.getElementById('research-input').value = address;
+            showResearch();
+            setTimeout(() => startResearch(), 500);
+        }
+        
+        function researchHeirs(ownerName) {
+            document.getElementById('research-input').value = ownerName;
+            showResearch();
+            setTimeout(() => startResearch(), 500);
+        }
+        
+        function generateDocument(propertyId) {
+            showNotification('Generating document...', 'success');
+            
+            fetch('/api/generate-document', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    document_type: 'affidavit',
+                    property_id: propertyId
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                } else {
+                    throw new Error('Document generation failed');
+                }
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `affidavit_of_heirship_${propertyId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showNotification('Document generated successfully!', 'success');
+            })
+            .catch(error => {
+                showNotification('Error generating document: ' + error.message, 'error');
+            });
+        }
+        
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+        
+        // Search on Enter key
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.target.id === 'research-input') {
+                startResearch();
+            }
+        });
+    </script>
+</body>
+</html>
+
