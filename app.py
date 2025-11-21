@@ -13,6 +13,12 @@ import re
 from urllib.parse import urljoin, urlparse
 import csv
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+import hashlib
+from typing import Optional, Dict, Any
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__, template_folder='.', static_folder='.')
 CORS(app)
@@ -76,6 +82,211 @@ def init_db():
     conn.close()
 
 init_db()
+
+# ====================================
+# ACTIVATION AND CONFIGURATION SYSTEM
+# ====================================
+
+class ActivationSystem:
+    """Handles activation code validation and licensing"""
+
+    def __init__(self):
+        self.activation_enabled = os.getenv('ACTIVATION_ENABLED', 'false').lower() == 'true'
+        self.valid_codes = self._load_activation_codes()
+        self.current_code = None
+
+    def _load_activation_codes(self) -> set:
+        """Load valid activation codes from environment or generate demo codes"""
+        env_code = os.getenv('ACTIVATION_CODE', '')
+        if env_code:
+            return {self._hash_code(env_code)}
+
+        # Demo activation codes (hashed)
+        demo_codes = [
+            'GENEALOGY-2024-PREMIUM',
+            'OVERAGE-PRO-LICENSE',
+            'HEIR-RESEARCH-UNLIMITED'
+        ]
+        return {self._hash_code(code) for code in demo_codes}
+
+    def _hash_code(self, code: str) -> str:
+        """Hash activation code for secure storage"""
+        return hashlib.sha256(code.upper().strip().encode()).hexdigest()
+
+    def validate(self, code: str) -> bool:
+        """Validate an activation code"""
+        if not self.activation_enabled:
+            return True  # If activation is disabled, always valid
+
+        hashed = self._hash_code(code)
+        if hashed in self.valid_codes:
+            self.current_code = hashed
+            return True
+        return False
+
+    def is_activated(self) -> bool:
+        """Check if system is currently activated"""
+        if not self.activation_enabled:
+            return True
+        return self.current_code is not None
+
+    def get_status(self) -> Dict[str, Any]:
+        """Get activation status"""
+        return {
+            'activated': self.is_activated(),
+            'activation_required': self.activation_enabled,
+            'demo_codes_available': not self.activation_enabled
+        }
+
+
+class LLMProvider:
+    """Unified interface for multiple LLM providers"""
+
+    def __init__(self):
+        self.provider = os.getenv('LLM_PROVIDER', 'anthropic').lower()
+        self.temperature = float(os.getenv('LLM_TEMPERATURE', '0.7'))
+        self.max_tokens = int(os.getenv('LLM_MAX_TOKENS', '2000'))
+        self._initialize_client()
+
+    def _initialize_client(self):
+        """Initialize the appropriate LLM client"""
+        self.client = None
+        self.model = None
+
+        try:
+            if self.provider == 'anthropic':
+                import anthropic
+                api_key = os.getenv('ANTHROPIC_API_KEY')
+                if api_key:
+                    self.client = anthropic.Anthropic(api_key=api_key)
+                    self.model = os.getenv('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022')
+
+            elif self.provider == 'openai':
+                import openai
+                api_key = os.getenv('OPENAI_API_KEY')
+                if api_key:
+                    self.client = openai.OpenAI(api_key=api_key)
+                    self.model = os.getenv('OPENAI_MODEL', 'gpt-4-turbo-preview')
+
+            elif self.provider == 'deepseek':
+                import openai
+                api_key = os.getenv('DEEPSEEK_API_KEY')
+                base_url = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
+                if api_key:
+                    self.client = openai.OpenAI(api_key=api_key, base_url=base_url)
+                    self.model = os.getenv('DEEPSEEK_MODEL', 'deepseek-chat')
+
+            elif self.provider == 'google':
+                import google.generativeai as genai
+                api_key = os.getenv('GOOGLE_API_KEY')
+                if api_key:
+                    genai.configure(api_key=api_key)
+                    self.model = os.getenv('GOOGLE_MODEL', 'gemini-pro')
+                    self.client = genai.GenerativeModel(self.model)
+
+            elif self.provider == 'cohere':
+                import cohere
+                api_key = os.getenv('COHERE_API_KEY')
+                if api_key:
+                    self.client = cohere.Client(api_key=api_key)
+                    self.model = os.getenv('COHERE_MODEL', 'command')
+
+            elif self.provider == 'local':
+                import openai
+                base_url = os.getenv('LOCAL_BASE_URL', 'http://localhost:11434')
+                self.client = openai.OpenAI(base_url=f"{base_url}/v1", api_key="local")
+                self.model = os.getenv('LOCAL_MODEL', 'llama2')
+
+        except ImportError as e:
+            print(f"Warning: Could not import {self.provider} library: {e}")
+            self.client = None
+
+    def is_configured(self) -> bool:
+        """Check if LLM is properly configured"""
+        return self.client is not None and self.model is not None
+
+    def generate(self, prompt: str, system_prompt: Optional[str] = None) -> Optional[str]:
+        """Generate text using the configured LLM provider"""
+        if not self.is_configured():
+            return None
+
+        try:
+            if self.provider == 'anthropic':
+                messages = [{"role": "user", "content": prompt}]
+                response = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                    system=system_prompt if system_prompt else "You are a helpful AI assistant specialized in genealogy research and heir identification.",
+                    messages=messages
+                )
+                return response.content[0].text
+
+            elif self.provider in ['openai', 'deepseek', 'local']:
+                messages = []
+                if system_prompt:
+                    messages.append({"role": "system", "content": system_prompt})
+                messages.append({"role": "user", "content": prompt})
+
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens
+                )
+                return response.choices[0].message.content
+
+            elif self.provider == 'google':
+                full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+                response = self.client.generate_content(full_prompt)
+                return response.text
+
+            elif self.provider == 'cohere':
+                full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+                response = self.client.generate(
+                    prompt=full_prompt,
+                    model=self.model,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens
+                )
+                return response.generations[0].text
+
+        except Exception as e:
+            print(f"Error generating with {self.provider}: {e}")
+            return None
+
+    def analyze_genealogy_data(self, name: str, data: Dict[str, Any]) -> Optional[str]:
+        """Use LLM to analyze genealogy data and provide insights"""
+        prompt = f"""Analyze the following genealogy data for {name} and provide insights about:
+1. Family relationships and structure
+2. Potential heirs and their relationships
+3. Address history and patterns
+4. Any notable information or connections
+
+Data:
+{json.dumps(data, indent=2)}
+
+Provide a structured analysis with clear sections."""
+
+        system_prompt = "You are an expert genealogist and heir researcher. Analyze the provided data and give clear, actionable insights for identifying and contacting potential heirs."
+
+        return self.generate(prompt, system_prompt)
+
+    def get_provider_info(self) -> Dict[str, Any]:
+        """Get information about current LLM provider"""
+        return {
+            'provider': self.provider,
+            'model': self.model,
+            'configured': self.is_configured(),
+            'temperature': self.temperature,
+            'max_tokens': self.max_tokens
+        }
+
+
+# Initialize systems
+activation_system = ActivationSystem()
+llm_provider = LLMProvider()
+
 
 class RealWebScraper:
     def __init__(self):
@@ -276,6 +487,79 @@ scraper = RealWebScraper()
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+# ====================================
+# ACTIVATION AND CONFIGURATION ENDPOINTS
+# ====================================
+
+@app.route('/api/activation/status')
+def get_activation_status():
+    """Get current activation status"""
+    status = activation_system.get_status()
+    llm_info = llm_provider.get_provider_info()
+
+    return jsonify({
+        'activation': status,
+        'llm': llm_info,
+        'demo_codes': [
+            'GENEALOGY-2024-PREMIUM',
+            'OVERAGE-PRO-LICENSE',
+            'HEIR-RESEARCH-UNLIMITED'
+        ] if not status['activation_required'] else []
+    })
+
+
+@app.route('/api/activation/validate', methods=['POST'])
+def validate_activation():
+    """Validate an activation code"""
+    data = request.json
+    code = data.get('code', '').strip()
+
+    if not code:
+        return jsonify({'error': 'Activation code required'}), 400
+
+    if activation_system.validate(code):
+        return jsonify({
+            'success': True,
+            'message': 'Activation successful!',
+            'status': activation_system.get_status()
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'message': 'Invalid activation code. Please check and try again.'
+        }), 401
+
+
+@app.route('/api/config/llm', methods=['GET'])
+def get_llm_config():
+    """Get current LLM configuration"""
+    return jsonify(llm_provider.get_provider_info())
+
+
+@app.route('/api/config/llm', methods=['POST'])
+def update_llm_config():
+    """Update LLM configuration (runtime only, not persistent)"""
+    data = request.json
+    provider = data.get('provider', '').lower()
+
+    if provider not in ['anthropic', 'openai', 'deepseek', 'google', 'cohere', 'local']:
+        return jsonify({'error': 'Invalid LLM provider'}), 400
+
+    # Update environment variable for current session
+    os.environ['LLM_PROVIDER'] = provider
+
+    # Reinitialize LLM provider
+    global llm_provider
+    llm_provider = LLMProvider()
+
+    return jsonify({
+        'success': True,
+        'message': f'LLM provider switched to {provider}',
+        'config': llm_provider.get_provider_info()
+    })
+
 
 @app.route('/upload-pdf', methods=['POST'])
 def upload_pdf():
@@ -518,19 +802,36 @@ def start_research():
         # Person/genealogy research
         genealogy_data = scraper.search_familytreenow(query)
         findagrave_data = scraper.search_findagrave(query)
-        
+
+        # Use LLM to analyze data if configured
+        ai_analysis = None
+        if llm_provider.is_configured():
+            combined_data = {
+                'familytreenow': genealogy_data,
+                'findagrave': findagrave_data
+            }
+            ai_analysis = llm_provider.analyze_genealogy_data(query, combined_data)
+
         # Store research result
         conn = sqlite3.connect('genealogy.db')
+        result_data = {
+            'familytreenow': genealogy_data,
+            'findagrave': findagrave_data,
+            'ai_analysis': ai_analysis
+        }
         conn.execute('''INSERT INTO research_results (query, result_type, data)
                        VALUES (?, ?, ?)''',
-                    (query, 'genealogy', json.dumps({'familytreenow': genealogy_data, 'findagrave': findagrave_data})))
+                    (query, 'genealogy', json.dumps(result_data)))
         conn.commit()
         conn.close()
-        
+
         return jsonify({
             'type': 'genealogy_research',
             'genealogy_data': genealogy_data,
             'findagrave_data': findagrave_data,
+            'ai_analysis': ai_analysis,
+            'llm_used': llm_provider.is_configured(),
+            'llm_provider': llm_provider.provider if llm_provider.is_configured() else None,
             'status': 'completed'
         })
 

@@ -585,6 +585,14 @@
                     <span>Properties</span>
                 </div>
             </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">System</div>
+                <div class="nav-item" onclick="showSettings()">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </div>
+            </div>
         </nav>
         
         <main class="main-content">
@@ -687,6 +695,84 @@
                     <div id="properties-list"></div>
                 </div>
             </div>
+
+            <!-- Settings View -->
+            <div id="settings-view" style="display: none;">
+                <div class="card">
+                    <h2 style="margin-bottom: 1.5rem; font-size: 2rem; font-weight: 800;">⚙️ System Settings</h2>
+                    <p style="margin-bottom: 2rem; color: var(--gray-600);">
+                        Configure activation and AI provider settings.
+                    </p>
+
+                    <!-- Activation Section -->
+                    <div style="margin-bottom: 3rem;">
+                        <h3 style="font-size: 1.5rem; margin-bottom: 1rem; color: var(--gray-700);">
+                            <i class="fas fa-key"></i> Activation
+                        </h3>
+                        <div id="activation-status" style="margin-bottom: 1.5rem;"></div>
+
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                            <input
+                                type="text"
+                                id="activation-code"
+                                placeholder="Enter activation code..."
+                                style="flex: 1; padding: 0.75rem 1rem; border: 2px solid var(--gray-300); border-radius: 8px; font-size: 1rem;"
+                            >
+                            <button class="btn btn-primary" onclick="validateActivation()">
+                                <i class="fas fa-check"></i>
+                                <span>Activate</span>
+                            </button>
+                        </div>
+
+                        <div id="demo-codes" style="margin-top: 1rem; padding: 1rem; background: var(--gray-100); border-radius: 8px; display: none;">
+                            <p style="font-weight: 600; margin-bottom: 0.5rem;">Demo Activation Codes:</p>
+                            <ul style="list-style: none; padding: 0;">
+                                <li style="margin: 0.25rem 0; font-family: monospace; color: var(--primary);">• GENEALOGY-2024-PREMIUM</li>
+                                <li style="margin: 0.25rem 0; font-family: monospace; color: var(--primary);">• OVERAGE-PRO-LICENSE</li>
+                                <li style="margin: 0.25rem 0; font-family: monospace; color: var(--primary);">• HEIR-RESEARCH-UNLIMITED</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- LLM Provider Section -->
+                    <div style="margin-bottom: 3rem;">
+                        <h3 style="font-size: 1.5rem; margin-bottom: 1rem; color: var(--gray-700);">
+                            <i class="fas fa-brain"></i> AI Provider Configuration
+                        </h3>
+
+                        <div id="llm-status" style="margin-bottom: 1.5rem;"></div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Select AI Provider:</label>
+                            <select
+                                id="llm-provider"
+                                onchange="updateLLMProvider()"
+                                style="width: 100%; padding: 0.75rem 1rem; border: 2px solid var(--gray-300); border-radius: 8px; font-size: 1rem; background: white;"
+                            >
+                                <option value="anthropic">Anthropic (Claude)</option>
+                                <option value="openai">OpenAI (GPT-4)</option>
+                                <option value="deepseek">DeepSeek</option>
+                                <option value="google">Google (Gemini)</option>
+                                <option value="cohere">Cohere</option>
+                                <option value="local">Local (Ollama)</option>
+                            </select>
+                        </div>
+
+                        <div style="padding: 1rem; background: var(--gray-100); border-radius: 8px;">
+                            <p style="margin-bottom: 0.5rem;"><strong>Provider:</strong> <span id="current-provider">-</span></p>
+                            <p style="margin-bottom: 0.5rem;"><strong>Model:</strong> <span id="current-model">-</span></p>
+                            <p style="margin-bottom: 0.5rem;"><strong>Status:</strong> <span id="llm-configured">-</span></p>
+                        </div>
+
+                        <div style="margin-top: 1.5rem; padding: 1rem; background: #fffbeb; border-left: 4px solid var(--warning); border-radius: 8px;">
+                            <p style="margin: 0; color: var(--gray-700);">
+                                <strong>Note:</strong> To configure API keys, create a <code>.env</code> file based on <code>.env.template</code>
+                                and add your API keys for the providers you want to use. See the template file for all available options.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
     
@@ -713,7 +799,12 @@
             switchView('properties');
             loadProperties();
         }
-        
+
+        function showSettings() {
+            switchView('settings');
+            loadActivationStatus();
+        }
+
         function switchView(view) {
             // Hide all views
             document.querySelectorAll('[id$="-view"]').forEach(el => el.style.display = 'none');
@@ -754,8 +845,14 @@
                 handleFiles(e.target.files);
             });
             
-            // Load analytics on start
+            // Load analytics and activation status on start
             loadAnalytics();
+            fetch('/api/activation/status')
+                .then(response => response.json())
+                .then(data => {
+                    updateAIStatusBadge(data.activation.activated, data.llm.configured);
+                })
+                .catch(error => console.error('Error loading initial activation status:', error));
         });
         
         function handleFiles(files) {
@@ -941,21 +1038,35 @@
         
         function displayGenealogyResults(data) {
             const genealogy = data.genealogy_data;
-            
+
             document.getElementById('research-results').innerHTML = `
                 <div class="results-container">
                     <div class="results-header">
                         <h3 style="color: var(--success);">
                             <i class="fas fa-check-circle"></i> Genealogy Research Complete
                         </h3>
+                        ${data.llm_used ? `
+                            <p style="margin: 0.5rem 0; color: var(--gray-600); font-size: 0.9rem;">
+                                <i class="fas fa-robot"></i> AI Analysis by ${data.llm_provider}
+                            </p>
+                        ` : ''}
                     </div>
-                    
+
+                    ${data.ai_analysis ? `
+                        <div style="margin-bottom: 2rem; padding: 1.5rem; background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-radius: 12px; border-left: 4px solid var(--primary);">
+                            <h4 style="margin-bottom: 1rem; color: var(--primary);">
+                                <i class="fas fa-brain"></i> AI Analysis & Insights
+                            </h4>
+                            <div style="white-space: pre-wrap; line-height: 1.8; color: var(--gray-700);">${data.ai_analysis}</div>
+                        </div>
+                    ` : ''}
+
                     <div class="result-item">
                         <h4>Subject: ${genealogy.name}</h4>
                         <p><strong>Age Range:</strong> ${genealogy.age_range}</p>
                         ${genealogy.phone_numbers.length > 0 ? `<p><strong>Phone Numbers:</strong> ${genealogy.phone_numbers.join(', ')}</p>` : ''}
                     </div>
-                    
+
                     ${genealogy.relatives.length > 0 ? `
                         <h4 style="margin: 1.5rem 0 1rem 0; color: var(--primary);">Family Members (${genealogy.relatives.length})</h4>
                         <div class="results-grid">
@@ -968,7 +1079,7 @@
                             `).join('')}
                         </div>
                     ` : ''}
-                    
+
                     ${genealogy.addresses.length > 0 ? `
                         <h4 style="margin: 1.5rem 0 1rem 0; color: var(--primary);">Known Addresses</h4>
                         <div class="results-grid">
@@ -1089,7 +1200,127 @@
                 console.error('Error loading analytics:', error);
             });
         }
-        
+
+        // Activation and Settings Functions
+        function loadActivationStatus() {
+            fetch('/api/activation/status')
+            .then(response => response.json())
+            .then(data => {
+                // Update activation status
+                const activationStatus = document.getElementById('activation-status');
+                const isActivated = data.activation.activated;
+
+                activationStatus.innerHTML = `
+                    <div style="padding: 1rem; border-radius: 8px; background: ${isActivated ? '#d1fae5' : '#fee2e2'};
+                         border-left: 4px solid ${isActivated ? '#10b981' : '#ef4444'};">
+                        <p style="margin: 0; color: ${isActivated ? '#065f46' : '#991b1b'}; font-weight: 600;">
+                            <i class="fas fa-${isActivated ? 'check-circle' : 'exclamation-circle'}"></i>
+                            ${isActivated ? 'System Activated' : 'Activation Required'}
+                        </p>
+                        ${!isActivated && !data.activation.activation_required ?
+                            '<p style="margin: 0.5rem 0 0 0; color: #065f46;">Demo mode: Use any demo code below to activate.</p>' : ''}
+                    </div>
+                `;
+
+                // Show demo codes if available
+                const demoCodes = document.getElementById('demo-codes');
+                if (data.demo_codes && data.demo_codes.length > 0) {
+                    demoCodes.style.display = 'block';
+                } else {
+                    demoCodes.style.display = 'none';
+                }
+
+                // Update LLM status
+                updateLLMStatus(data.llm);
+
+                // Update AI status badge in header
+                updateAIStatusBadge(isActivated, data.llm.configured);
+            })
+            .catch(error => {
+                console.error('Error loading activation status:', error);
+                showNotification('Failed to load activation status', 'error');
+            });
+        }
+
+        function validateActivation() {
+            const code = document.getElementById('activation-code').value.trim();
+
+            if (!code) {
+                showNotification('Please enter an activation code', 'error');
+                return;
+            }
+
+            fetch('/api/activation/validate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ code: code })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    loadActivationStatus();
+                    document.getElementById('activation-code').value = '';
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error validating activation:', error);
+                showNotification('Activation failed. Please try again.', 'error');
+            });
+        }
+
+        function updateLLMStatus(llmInfo) {
+            document.getElementById('current-provider').textContent = llmInfo.provider || '-';
+            document.getElementById('current-model').textContent = llmInfo.model || 'Not configured';
+            document.getElementById('llm-configured').textContent = llmInfo.configured ? '✅ Configured' : '❌ Not configured';
+            document.getElementById('llm-provider').value = llmInfo.provider || 'anthropic';
+        }
+
+        function updateLLMProvider() {
+            const provider = document.getElementById('llm-provider').value;
+
+            fetch('/api/config/llm', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ provider: provider })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    updateLLMStatus(data.config);
+                } else {
+                    showNotification('Failed to update LLM provider', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating LLM provider:', error);
+                showNotification('Failed to update LLM provider', 'error');
+            });
+        }
+
+        function updateAIStatusBadge(isActivated, isConfigured) {
+            const statusBadge = document.querySelector('.ai-status span');
+            const statusPulse = document.querySelector('.ai-pulse');
+
+            if (isActivated && isConfigured) {
+                statusBadge.textContent = 'AI Systems Active';
+                statusPulse.style.background = '#10b981';
+            } else if (isActivated && !isConfigured) {
+                statusBadge.textContent = 'AI Not Configured';
+                statusPulse.style.background = '#f59e0b';
+            } else {
+                statusBadge.textContent = 'Activation Required';
+                statusPulse.style.background = '#ef4444';
+            }
+        }
+
         // Utility functions
         function researchProperty(address) {
             document.getElementById('research-input').value = address;
