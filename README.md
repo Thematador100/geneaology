@@ -11,6 +11,11 @@ A world-class AI-powered platform for real estate heir research, probate analysi
 - **Document Generation**: Create legal documents like Affidavits of Heirship
 - **Real-time Analytics**: Track research progress and success rates
 - **Professional UI/UX**: Modern interface with interactive charts and visualizations
+- **AI Recommendation Engine** (NEW): Intelligent recommendations for:
+  - Priority ranking of heirs to contact
+  - Properties requiring immediate attention
+  - Next best actions based on data completeness
+  - Similar case pattern matching
 
 ## Technology Stack
 
@@ -82,6 +87,7 @@ ai-genealogy-platform/
 
 ## API Endpoints
 
+### Core Endpoints
 - `GET /` - Main application interface
 - `POST /upload` - Upload overage data files
 - `POST /upload-pdf` - Upload PDF documents for analysis
@@ -90,12 +96,19 @@ ai-genealogy-platform/
 - `GET /api/properties` - Get all properties
 - `GET /api/analytics` - Get system analytics
 
+### Recommendation Endpoints (NEW)
+- `GET /api/recommendations/dashboard` - Get comprehensive recommendations overview
+- `GET /api/recommendations/properties` - Get properties ranked by priority (top 20)
+- `GET /api/recommendations/heirs/<property_id>` - Get prioritized heir contact list
+- `GET /api/recommendations/actions/<property_id>` - Get recommended next actions
+- `GET /api/recommendations/similar/<property_id>` - Find similar properties for pattern analysis
+
 ## Database Schema
 
 ### Properties Table
 - id, address, owner_name, property_value, case_number, overage_amount, status
 
-### Heirs Table  
+### Heirs Table
 - id, property_id, name, relationship, contact_info, address, phone, verified
 
 ### PDF Documents Table
@@ -103,6 +116,67 @@ ai-genealogy-platform/
 
 ### Research Results Table
 - id, query, result_type, data, created_at
+
+## Recommendation System
+
+The AI Recommendation Engine analyzes your property and heir data to provide intelligent, actionable recommendations.
+
+### Key Features
+
+**1. Heir Priority Scoring (0-100 points)**
+- Verification status: Verified heirs score higher (40 points)
+- Relationship closeness: Sons/daughters (30 pts) > siblings (18 pts) > cousins (9 pts)
+- Contact completeness: Phone + address + email maximize score (20 points)
+- Property value: Higher overage amounts increase urgency (10 points)
+
+**2. Property Attention Scoring (0-100 points)**
+- Overage amount: $100k+ = critical attention (30 points)
+- Missing heirs: No heirs found = critical priority (40 points)
+- Verification status: Unverified heirs need immediate action (20 points)
+- Property status: Active cases prioritized (10 points)
+
+**3. Smart Action Recommendations**
+- Critical: Research heirs for properties with none found
+- High: Verify unverified heirs
+- Medium: Collect missing contact information
+- Low: Expand research for additional relatives
+
+**4. Pattern Matching**
+- Identifies similar properties based on overage amounts
+- Helps predict successful research strategies
+- Finds comparable cases for reference
+
+### Usage Examples
+
+**Get Dashboard Overview:**
+```bash
+GET /api/recommendations/dashboard
+```
+Returns summary statistics and top 5 priority properties
+
+**Get Property Priorities:**
+```bash
+GET /api/recommendations/properties
+```
+Returns all properties ranked by attention score (top 20)
+
+**Get Heir Priorities for a Property:**
+```bash
+GET /api/recommendations/heirs/123
+```
+Returns ranked list of heirs to contact for property #123
+
+**Get Next Actions:**
+```bash
+GET /api/recommendations/actions/123
+```
+Returns recommended next steps for property #123
+
+**Find Similar Cases:**
+```bash
+GET /api/recommendations/similar/123
+```
+Returns similar properties for pattern analysis
 
 ## Contributing
 

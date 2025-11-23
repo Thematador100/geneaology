@@ -736,6 +736,493 @@ def get_analytics():
         'success_rate': 94 if properties_count > 0 else 0
     })
 
+# Recommendation Engine
+class RecommendationEngine:
+    """AI-powered recommendation system for heir research and property management"""
+
+    def __init__(self):
+        self.relationship_weights = {
+            'son': 10,
+            'daughter': 10,
+            'spouse': 9,
+            'child': 9,
+            'parent': 8,
+            'mother': 8,
+            'father': 8,
+            'brother': 6,
+            'sister': 6,
+            'sibling': 6,
+            'grandchild': 5,
+            'grandson': 5,
+            'granddaughter': 5,
+            'nephew': 4,
+            'niece': 4,
+            'cousin': 3,
+            'relative': 2,
+            'heir': 1
+        }
+
+    def score_heir_priority(self, heir, property_data):
+        """Calculate priority score for contacting an heir"""
+        score = 0
+
+        # Verification status (40 points)
+        if heir.get('verified'):
+            score += 40
+        else:
+            score += 10  # Unverified but still worth following up
+
+        # Relationship closeness (30 points)
+        relationship = heir.get('relationship', '').lower()
+        for rel_type, weight in self.relationship_weights.items():
+            if rel_type in relationship:
+                score += weight * 3
+                break
+
+        # Contact information completeness (20 points)
+        if heir.get('phone'):
+            score += 8
+        if heir.get('address'):
+            score += 7
+        if heir.get('contact_info'):
+            score += 5
+
+        # Property value consideration (10 points)
+        overage = property_data.get('overage_amount', 0)
+        if isinstance(overage, str):
+            overage = float(overage.replace('$', '').replace(',', ''))
+        if overage > 50000:
+            score += 10
+        elif overage > 25000:
+            score += 7
+        elif overage > 10000:
+            score += 5
+        else:
+            score += 2
+
+        return min(score, 100)
+
+    def score_property_attention(self, property_data, heirs_count, verified_heirs_count):
+        """Calculate attention score for a property (higher = needs more attention)"""
+        score = 0
+
+        # High overage amount (30 points)
+        overage = property_data.get('overage_amount', 0)
+        if isinstance(overage, str):
+            overage = float(overage.replace('$', '').replace(',', ''))
+        if overage > 100000:
+            score += 30
+        elif overage > 50000:
+            score += 25
+        elif overage > 25000:
+            score += 20
+        elif overage > 10000:
+            score += 15
+        else:
+            score += 5
+
+        # No heirs found (40 points - critical)
+        if heirs_count == 0:
+            score += 40
+        elif heirs_count == 1:
+            score += 20
+        else:
+            score += 5
+
+        # No verified heirs (20 points)
+        if heirs_count > 0 and verified_heirs_count == 0:
+            score += 20
+        elif verified_heirs_count < heirs_count:
+            score += 10
+
+        # Status consideration (10 points)
+        if property_data.get('status') == 'Active':
+            score += 10
+        elif property_data.get('status') == 'Pending':
+            score += 5
+
+        return min(score, 100)
+
+    def recommend_next_actions(self, property_id, property_data, heirs):
+        """Generate recommended next actions for a property"""
+        actions = []
+
+        heirs_count = len(heirs)
+        verified_count = sum(1 for h in heirs if h.get('verified'))
+
+        # Critical: No heirs found
+        if heirs_count == 0:
+            actions.append({
+                'priority': 'critical',
+                'action': 'research_heirs',
+                'title': 'Research Heirs',
+                'description': f'No heirs found for {property_data.get("owner_name")}. Start genealogy research immediately.',
+                'property_id': property_id
+            })
+
+        # High: Heirs need verification
+        if heirs_count > 0 and verified_count == 0:
+            actions.append({
+                'priority': 'high',
+                'action': 'verify_heirs',
+                'title': 'Verify All Heirs',
+                'description': f'{heirs_count} unverified heir(s) found. Contact and verify their identity.',
+                'property_id': property_id
+            })
+
+        # Medium: Missing contact information
+        missing_contact = [h for h in heirs if not h.get('phone') and not h.get('contact_info')]
+        if missing_contact:
+            actions.append({
+                'priority': 'medium',
+                'action': 'collect_contact_info',
+                'title': 'Collect Contact Information',
+                'description': f'{len(missing_contact)} heir(s) missing contact details. Research phone numbers and addresses.',
+                'property_id': property_id,
+                'heirs': [h.get('name') for h in missing_contact]
+            })
+
+        # Medium: High overage amount, generate documents
+        overage = property_data.get('overage_amount', 0)
+        if isinstance(overage, str):
+            overage = float(overage.replace('$', '').replace(',', ''))
+        if overage > 25000 and verified_count > 0:
+            actions.append({
+                'priority': 'medium',
+                'action': 'generate_documents',
+                'title': 'Generate Legal Documents',
+                'description': f'Property has ${overage:,.2f} overage. Generate Affidavit of Heirship.',
+                'property_id': property_id
+            })
+
+        # Low: Additional research recommended
+        if heirs_count > 0 and heirs_count < 3:
+            actions.append({
+                'priority': 'low',
+                'action': 'expand_research',
+                'title': 'Expand Heir Research',
+                'description': 'Consider searching for additional heirs or relatives.',
+                'property_id': property_id
+            })
+
+        return actions
+
+    def find_similar_properties(self, property_id, property_data, all_properties):
+        """Find similar properties for pattern analysis"""
+        similar = []
+
+        overage = property_data.get('overage_amount', 0)
+        if isinstance(overage, str):
+            overage = float(overage.replace('$', '').replace(',', ''))
+
+        for prop in all_properties:
+            if prop['id'] == property_id:
+                continue
+
+            prop_overage = prop.get('overage_amount', 0)
+            if isinstance(prop_overage, str):
+                prop_overage = float(prop_overage.replace('$', '').replace(',', ''))
+
+            # Similar overage amount (within 25%)
+            if overage > 0:
+                diff_ratio = abs(prop_overage - overage) / overage
+                if diff_ratio < 0.25:
+                    similar.append({
+                        'property': prop,
+                        'similarity_reason': 'Similar overage amount',
+                        'similarity_score': int((1 - diff_ratio) * 100)
+                    })
+
+        # Sort by similarity score
+        similar.sort(key=lambda x: x['similarity_score'], reverse=True)
+        return similar[:5]
+
+recommendation_engine = RecommendationEngine()
+
+@app.route('/api/recommendations/heirs/<int:property_id>')
+def get_heir_recommendations(property_id):
+    """Get prioritized heir contact recommendations"""
+    conn = sqlite3.connect('genealogy.db')
+    c = conn.cursor()
+
+    # Get property
+    c.execute("SELECT * FROM properties WHERE id = ?", (property_id,))
+    property_row = c.fetchone()
+
+    if not property_row:
+        return jsonify({'error': 'Property not found'}), 404
+
+    property_data = {
+        'id': property_row[0],
+        'address': property_row[1],
+        'owner_name': property_row[2],
+        'property_value': property_row[3],
+        'overage_amount': property_row[4],
+        'case_number': property_row[5],
+        'status': property_row[6]
+    }
+
+    # Get heirs
+    c.execute("SELECT * FROM heirs WHERE property_id = ?", (property_id,))
+    heir_rows = c.fetchall()
+    conn.close()
+
+    heirs_with_scores = []
+    for heir_row in heir_rows:
+        heir = {
+            'id': heir_row[0],
+            'name': heir_row[2],
+            'relationship': heir_row[3],
+            'contact_info': heir_row[4],
+            'address': heir_row[5],
+            'phone': heir_row[6],
+            'verified': bool(heir_row[7])
+        }
+
+        priority_score = recommendation_engine.score_heir_priority(heir, property_data)
+
+        heirs_with_scores.append({
+            'heir': heir,
+            'priority_score': priority_score,
+            'priority_level': 'Critical' if priority_score > 80 else 'High' if priority_score > 60 else 'Medium' if priority_score > 40 else 'Low',
+            'recommendation': f"Contact {heir['name']} - {heir['relationship']}" + (' (Verified)' if heir['verified'] else ' (Needs verification)')
+        })
+
+    # Sort by priority score
+    heirs_with_scores.sort(key=lambda x: x['priority_score'], reverse=True)
+
+    return jsonify({
+        'property_id': property_id,
+        'property_address': property_data['address'],
+        'recommended_heirs': heirs_with_scores
+    })
+
+@app.route('/api/recommendations/properties')
+def get_property_recommendations():
+    """Get properties that need attention, ranked by priority"""
+    conn = sqlite3.connect('genealogy.db')
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM properties ORDER BY created_at DESC")
+    property_rows = c.fetchall()
+
+    properties_with_scores = []
+
+    for property_row in property_rows:
+        property_id = property_row[0]
+        property_data = {
+            'id': property_id,
+            'address': property_row[1],
+            'owner_name': property_row[2],
+            'property_value': f'${property_row[3]:,.2f}' if property_row[3] else 'Unknown',
+            'overage_amount': f'${property_row[4]:,.2f}' if property_row[4] else '$0.00',
+            'case_number': property_row[5],
+            'status': property_row[6]
+        }
+
+        # Get heir counts
+        c.execute("SELECT COUNT(*) FROM heirs WHERE property_id = ?", (property_id,))
+        heirs_count = c.fetchone()[0]
+
+        c.execute("SELECT COUNT(*) FROM heirs WHERE property_id = ? AND verified = 1", (property_id,))
+        verified_count = c.fetchone()[0]
+
+        attention_score = recommendation_engine.score_property_attention(property_data, heirs_count, verified_count)
+
+        properties_with_scores.append({
+            'property': property_data,
+            'attention_score': attention_score,
+            'priority_level': 'Critical' if attention_score > 80 else 'High' if attention_score > 60 else 'Medium' if attention_score > 40 else 'Low',
+            'heirs_found': heirs_count,
+            'heirs_verified': verified_count,
+            'issues': []
+        })
+
+        # Identify issues
+        if heirs_count == 0:
+            properties_with_scores[-1]['issues'].append('No heirs found')
+        if heirs_count > 0 and verified_count == 0:
+            properties_with_scores[-1]['issues'].append('No verified heirs')
+        if property_row[4] and property_row[4] > 50000:
+            properties_with_scores[-1]['issues'].append('High overage amount')
+
+    conn.close()
+
+    # Sort by attention score
+    properties_with_scores.sort(key=lambda x: x['attention_score'], reverse=True)
+
+    return jsonify({
+        'total_properties': len(properties_with_scores),
+        'critical_properties': len([p for p in properties_with_scores if p['attention_score'] > 80]),
+        'properties': properties_with_scores[:20]  # Top 20
+    })
+
+@app.route('/api/recommendations/actions/<int:property_id>')
+def get_action_recommendations(property_id):
+    """Get recommended next actions for a property"""
+    conn = sqlite3.connect('genealogy.db')
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM properties WHERE id = ?", (property_id,))
+    property_row = c.fetchone()
+
+    if not property_row:
+        return jsonify({'error': 'Property not found'}), 404
+
+    property_data = {
+        'id': property_row[0],
+        'address': property_row[1],
+        'owner_name': property_row[2],
+        'property_value': property_row[3],
+        'overage_amount': property_row[4],
+        'case_number': property_row[5],
+        'status': property_row[6]
+    }
+
+    c.execute("SELECT * FROM heirs WHERE property_id = ?", (property_id,))
+    heir_rows = c.fetchall()
+
+    heirs = []
+    for heir_row in heir_rows:
+        heirs.append({
+            'name': heir_row[2],
+            'relationship': heir_row[3],
+            'contact_info': heir_row[4],
+            'address': heir_row[5],
+            'phone': heir_row[6],
+            'verified': bool(heir_row[7])
+        })
+
+    conn.close()
+
+    actions = recommendation_engine.recommend_next_actions(property_id, property_data, heirs)
+
+    return jsonify({
+        'property_id': property_id,
+        'property_address': property_data['address'],
+        'recommended_actions': actions,
+        'action_count': len(actions)
+    })
+
+@app.route('/api/recommendations/similar/<int:property_id>')
+def get_similar_properties(property_id):
+    """Find similar properties for pattern analysis"""
+    conn = sqlite3.connect('genealogy.db')
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM properties WHERE id = ?", (property_id,))
+    property_row = c.fetchone()
+
+    if not property_row:
+        return jsonify({'error': 'Property not found'}), 404
+
+    property_data = {
+        'id': property_row[0],
+        'address': property_row[1],
+        'owner_name': property_row[2],
+        'overage_amount': property_row[4]
+    }
+
+    # Get all properties
+    c.execute("SELECT * FROM properties")
+    all_property_rows = c.fetchall()
+
+    all_properties = []
+    for row in all_property_rows:
+        all_properties.append({
+            'id': row[0],
+            'address': row[1],
+            'owner_name': row[2],
+            'property_value': f'${row[3]:,.2f}' if row[3] else 'Unknown',
+            'overage_amount': row[4],
+            'case_number': row[5],
+            'status': row[6]
+        })
+
+    conn.close()
+
+    similar = recommendation_engine.find_similar_properties(property_id, property_data, all_properties)
+
+    return jsonify({
+        'property_id': property_id,
+        'property_address': property_data['address'],
+        'similar_properties': similar
+    })
+
+@app.route('/api/recommendations/dashboard')
+def get_recommendation_dashboard():
+    """Get comprehensive recommendations dashboard"""
+    conn = sqlite3.connect('genealogy.db')
+    c = conn.cursor()
+
+    # Get top 5 properties needing attention
+    c.execute("SELECT * FROM properties")
+    property_rows = c.fetchall()
+
+    properties_with_scores = []
+    for property_row in property_rows:
+        property_id = property_row[0]
+        property_data = {
+            'id': property_id,
+            'address': property_row[1],
+            'owner_name': property_row[2],
+            'overage_amount': f'${property_row[4]:,.2f}' if property_row[4] else '$0.00'
+        }
+
+        c.execute("SELECT COUNT(*) FROM heirs WHERE property_id = ?", (property_id,))
+        heirs_count = c.fetchone()[0]
+
+        c.execute("SELECT COUNT(*) FROM heirs WHERE property_id = ? AND verified = 1", (property_id,))
+        verified_count = c.fetchone()[0]
+
+        attention_score = recommendation_engine.score_property_attention(property_data, heirs_count, verified_count)
+
+        properties_with_scores.append({
+            'property': property_data,
+            'attention_score': attention_score,
+            'heirs_found': heirs_count,
+            'heirs_verified': verified_count
+        })
+
+    properties_with_scores.sort(key=lambda x: x['attention_score'], reverse=True)
+    top_properties = properties_with_scores[:5]
+
+    # Get overall statistics
+    c.execute("SELECT COUNT(*) FROM properties WHERE id IN (SELECT property_id FROM heirs WHERE verified = 0)")
+    properties_needing_verification = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(DISTINCT property_id) FROM heirs")
+    properties_with_heirs = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) FROM properties")
+    total_properties = c.fetchone()[0]
+
+    properties_without_heirs = total_properties - properties_with_heirs
+
+    conn.close()
+
+    return jsonify({
+        'summary': {
+            'total_properties': total_properties,
+            'properties_without_heirs': properties_without_heirs,
+            'properties_needing_verification': properties_needing_verification,
+            'properties_with_heirs': properties_with_heirs
+        },
+        'top_priority_properties': top_properties,
+        'alerts': [
+            {
+                'type': 'critical',
+                'message': f'{properties_without_heirs} properties have no heirs identified',
+                'action': 'Start genealogy research'
+            } if properties_without_heirs > 0 else None,
+            {
+                'type': 'warning',
+                'message': f'{properties_needing_verification} properties have unverified heirs',
+                'action': 'Contact and verify heirs'
+            } if properties_needing_verification > 0 else None
+        ]
+    })
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
 
