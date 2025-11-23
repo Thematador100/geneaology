@@ -277,7 +277,7 @@ scraper = RealWebScraper()
 def index():
     return render_template('index.html')
 
-@app.route('/upload-pdf', methods=['POST'])
+@app.route('/api/upload-pdf', methods=['POST'])
 def upload_pdf():
     """Handle PDF uploads for analysis"""
     if 'file' not in request.files:
@@ -292,60 +292,59 @@ def upload_pdf():
         filepath = os.path.join(app.config['PDF_FOLDER'], filename)
         file.save(filepath)
         
+        # Simulate PDF analysis with realistic data
+        analyzed_data = {
+            'names': [
+                'John Michael Smith',
+                'Mary Elizabeth Johnson',
+                'Robert William Davis',
+                'Sarah Ann Wilson',
+                'David James Brown'
+            ],
+            'addresses': [
+                '1234 Main Street, Dallas, TX 75201',
+                '5678 Oak Avenue, Houston, TX 77001',
+                '9012 Pine Road, Austin, TX 78701',
+                '3456 Elm Drive, San Antonio, TX 78201'
+            ],
+            'phone_numbers': [
+                '(214) 555-0123',
+                '(713) 555-0456',
+                '(512) 555-0789',
+                '(210) 555-0321'
+            ],
+            'relationships': [
+                'Son of deceased John Smith',
+                'Daughter of deceased Mary Smith',
+                'Brother of deceased Robert Smith',
+                'Spouse of deceased Elizabeth Smith'
+            ],
+            'properties': [
+                'Single family residence at 1234 Main St',
+                'Commercial property at 5678 Oak Ave',
+                'Vacant land parcel #123-456-789'
+            ],
+            'financial_info': [
+                '$125,000.00',
+                '$45,750.50',
+                '$89,250.75',
+                '$12,500.00'
+            ]
+        }
+
+        # Store in database
+        conn = sqlite3.connect('genealogy.db')
         try:
-            # Simulate PDF analysis with realistic data
-            analyzed_data = {
-                'names': [
-                    'John Michael Smith',
-                    'Mary Elizabeth Johnson', 
-                    'Robert William Davis',
-                    'Sarah Ann Wilson',
-                    'David James Brown'
-                ],
-                'addresses': [
-                    '1234 Main Street, Dallas, TX 75201',
-                    '5678 Oak Avenue, Houston, TX 77001', 
-                    '9012 Pine Road, Austin, TX 78701',
-                    '3456 Elm Drive, San Antonio, TX 78201'
-                ],
-                'phone_numbers': [
-                    '(214) 555-0123',
-                    '(713) 555-0456', 
-                    '(512) 555-0789',
-                    '(210) 555-0321'
-                ],
-                'relationships': [
-                    'Son of deceased John Smith',
-                    'Daughter of deceased Mary Smith',
-                    'Brother of deceased Robert Smith',
-                    'Spouse of deceased Elizabeth Smith'
-                ],
-                'properties': [
-                    'Single family residence at 1234 Main St',
-                    'Commercial property at 5678 Oak Ave',
-                    'Vacant land parcel #123-456-789'
-                ],
-                'financial_info': [
-                    '$125,000.00',
-                    '$45,750.50',
-                    '$89,250.75',
-                    '$12,500.00'
-                ]
-            }
-            
-            # Store in database
-            conn = sqlite3.connect('genealogy.db')
             c = conn.cursor()
-            
-            c.execute('''INSERT INTO pdf_documents 
+
+            c.execute('''INSERT INTO pdf_documents
                         (filename, original_name, file_path, extracted_text, analyzed_data, source_type)
                         VALUES (?, ?, ?, ?, ?, ?)''',
                      (filename, file.filename, filepath, 'PDF text extracted and analyzed successfully', json.dumps(analyzed_data), 'tracers'))
-            
+
             pdf_id = c.lastrowid
             conn.commit()
-            conn.close()
-            
+
             return jsonify({
                 'success': True,
                 'message': f'PDF processed successfully - extracted {len(analyzed_data["names"])} names, {len(analyzed_data["addresses"])} addresses, and {len(analyzed_data["phone_numbers"])} phone numbers',
@@ -354,13 +353,15 @@ def upload_pdf():
                 'extracted_entities': analyzed_data,
                 'text_length': 2500
             })
-            
+
         except Exception as e:
             return jsonify({'error': f'Error processing PDF: {str(e)}'}), 500
+        finally:
+            conn.close()
     
     return jsonify({'error': 'Please upload a valid PDF file'}), 400
 
-@app.route('/upload', methods=['POST'])
+@app.route('/api/upload', methods=['POST'])
 def upload_file():
     """Handle file uploads for overage data"""
     if 'file' not in request.files:
@@ -375,60 +376,61 @@ def upload_file():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
+        conn = sqlite3.connect('genealogy.db')
         try:
             processed_count = 0
-            conn = sqlite3.connect('genealogy.db')
-            
+
             if filename.endswith('.csv'):
                 with open(filepath, 'r', encoding='utf-8') as csvfile:
                     reader = csv.DictReader(csvfile)
                     for row in reader:
                         # Extract common fields with flexible column names
-                        address = (row.get('Address') or row.get('address') or 
-                                 row.get('PROPERTY_ADDRESS') or row.get('Property Address') or 
+                        address = (row.get('Address') or row.get('address') or
+                                 row.get('PROPERTY_ADDRESS') or row.get('Property Address') or
                                  row.get('property_address') or '').strip()
-                        
-                        owner = (row.get('Owner') or row.get('owner') or 
-                               row.get('OWNER_NAME') or row.get('Owner Name') or 
+
+                        owner = (row.get('Owner') or row.get('owner') or
+                               row.get('OWNER_NAME') or row.get('Owner Name') or
                                row.get('owner_name') or '').strip()
-                        
+
                         try:
-                            value = float(row.get('Value') or row.get('value') or 
-                                        row.get('PROPERTY_VALUE') or row.get('Property Value') or 
+                            value = float(row.get('Value') or row.get('value') or
+                                        row.get('PROPERTY_VALUE') or row.get('Property Value') or
                                         row.get('property_value') or 0)
                         except:
                             value = 0
-                        
+
                         try:
-                            overage = float(row.get('Overage') or row.get('overage') or 
-                                          row.get('OVERAGE_AMOUNT') or row.get('Overage Amount') or 
+                            overage = float(row.get('Overage') or row.get('overage') or
+                                          row.get('OVERAGE_AMOUNT') or row.get('Overage Amount') or
                                           row.get('overage_amount') or 0)
                         except:
                             overage = 0
-                        
-                        case_num = (row.get('Case') or row.get('case') or 
-                                  row.get('CASE_NUMBER') or row.get('Case Number') or 
+
+                        case_num = (row.get('Case') or row.get('case') or
+                                  row.get('CASE_NUMBER') or row.get('Case Number') or
                                   row.get('case_number') or '').strip()
-                        
+
                         if address and owner:
-                            conn.execute('''INSERT INTO properties 
+                            conn.execute('''INSERT INTO properties
                                            (address, owner_name, property_value, overage_amount, case_number, status)
                                            VALUES (?, ?, ?, ?, ?, ?)''',
                                         (address, owner, value, overage, case_num, 'Active'))
                             processed_count += 1
-            
+
             conn.commit()
-            conn.close()
-            
+
             return jsonify({
                 'success': True,
                 'message': f'Successfully processed {processed_count} records from {filename}',
                 'filename': filename,
                 'records_processed': processed_count
             })
-            
+
         except Exception as e:
             return jsonify({'error': f'Error processing file: {str(e)}'}), 500
+        finally:
+            conn.close()
 
 @app.route('/api/research', methods=['POST'])
 def start_research():
@@ -445,48 +447,56 @@ def start_research():
     if is_address:
         # Property research
         conn = sqlite3.connect('genealogy.db')
-        c = conn.cursor()
-        
-        # Search for property in database
-        c.execute("SELECT * FROM properties WHERE address LIKE ?", (f'%{query}%',))
-        property_row = c.fetchone()
-        
-        if property_row:
-            property_data = {
-                'id': property_row[0],
-                'address': property_row[1],
-                'owner_name': property_row[2],
-                'property_value': f'${property_row[3]:,.2f}' if property_row[3] else 'Unknown',
-                'overage_amount': f'${property_row[4]:,.2f}' if property_row[4] else '$0.00',
-                'case_number': property_row[5],
-                'status': property_row[6]
-            }
-            
-            # Get heirs for this property
-            c.execute("SELECT * FROM heirs WHERE property_id = ?", (property_row[0],))
-            heir_rows = c.fetchall()
-            
-            heirs = []
-            for heir_row in heir_rows:
-                heirs.append({
-                    'name': heir_row[2],
-                    'relationship': heir_row[3],
-                    'contact_info': heir_row[4],
-                    'address': heir_row[5],
-                    'phone': heir_row[6],
-                    'verified': bool(heir_row[7])
+        try:
+            c = conn.cursor()
+
+            # Search for property in database
+            c.execute("SELECT * FROM properties WHERE address LIKE ?", (f'%{query}%',))
+            property_row = c.fetchone()
+
+            if property_row:
+                property_data = {
+                    'id': property_row[0],
+                    'address': property_row[1],
+                    'owner_name': property_row[2],
+                    'property_value': f'${property_row[3]:,.2f}' if property_row[3] else 'Unknown',
+                    'overage_amount': f'${property_row[4]:,.2f}' if property_row[4] else '$0.00',
+                    'case_number': property_row[5],
+                    'status': property_row[6]
+                }
+
+                # Get heirs for this property
+                c.execute("SELECT * FROM heirs WHERE property_id = ?", (property_row[0],))
+                heir_rows = c.fetchall()
+
+                heirs = []
+                for heir_row in heir_rows:
+                    heirs.append({
+                        'name': heir_row[2],
+                        'relationship': heir_row[3],
+                        'contact_info': heir_row[4],
+                        'address': heir_row[5],
+                        'phone': heir_row[6],
+                        'verified': bool(heir_row[7])
+                    })
+            else:
+                return jsonify({
+                    'type': 'property_research',
+                    'error': 'Property not found in database. Please upload your overage data first.',
+                    'status': 'not_found'
                 })
-            
+        finally:
             conn.close()
-            
-            # If no heirs found, research them
-            if not heirs and property_data['owner_name']:
-                genealogy_data = scraper.search_familytreenow(property_data['owner_name'])
-                
-                # Store found relatives as potential heirs
-                conn = sqlite3.connect('genealogy.db')
+
+        # If no heirs found, research them
+        if not heirs and property_data['owner_name']:
+            genealogy_data = scraper.search_familytreenow(property_data['owner_name'])
+
+            # Store found relatives as potential heirs
+            conn = sqlite3.connect('genealogy.db')
+            try:
                 for relative in genealogy_data.get('relatives', []):
-                    conn.execute('''INSERT INTO heirs 
+                    conn.execute('''INSERT INTO heirs
                                    (property_id, name, relationship, verified)
                                    VALUES (?, ?, ?, ?)''',
                                 (property_data['id'], relative['name'], relative['relationship'], False))
@@ -499,34 +509,31 @@ def start_research():
                         'verified': False
                     })
                 conn.commit()
+            finally:
                 conn.close()
-            
-            return jsonify({
-                'type': 'property_research',
-                'property_data': property_data,
-                'heirs': heirs,
-                'status': 'completed'
-            })
-        else:
-            return jsonify({
-                'type': 'property_research',
-                'error': 'Property not found in database. Please upload your overage data first.',
-                'status': 'not_found'
-            })
+
+        return jsonify({
+            'type': 'property_research',
+            'property_data': property_data,
+            'heirs': heirs,
+            'status': 'completed'
+        })
     
     else:
         # Person/genealogy research
         genealogy_data = scraper.search_familytreenow(query)
         findagrave_data = scraper.search_findagrave(query)
-        
+
         # Store research result
         conn = sqlite3.connect('genealogy.db')
-        conn.execute('''INSERT INTO research_results (query, result_type, data)
-                       VALUES (?, ?, ?)''',
-                    (query, 'genealogy', json.dumps({'familytreenow': genealogy_data, 'findagrave': findagrave_data})))
-        conn.commit()
-        conn.close()
-        
+        try:
+            conn.execute('''INSERT INTO research_results (query, result_type, data)
+                           VALUES (?, ?, ?)''',
+                        (query, 'genealogy', json.dumps({'familytreenow': genealogy_data, 'findagrave': findagrave_data})))
+            conn.commit()
+        finally:
+            conn.close()
+
         return jsonify({
             'type': 'genealogy_research',
             'genealogy_data': genealogy_data,
@@ -540,38 +547,39 @@ def generate_document():
     data = request.json
     doc_type = data.get('document_type', 'affidavit')
     property_id = data.get('property_id')
-    
+
     if not property_id:
         return jsonify({'error': 'Property ID required'}), 400
-    
+
     # Get property and heir data
     conn = sqlite3.connect('genealogy.db')
-    c = conn.cursor()
-    
-    c.execute("SELECT * FROM properties WHERE id = ?", (property_id,))
-    property_row = c.fetchone()
-    
-    if not property_row:
-        return jsonify({'error': 'Property not found'}), 404
-    
-    property_data = {
-        'address': property_row[1],
-        'owner_name': property_row[2],
-        'property_value': f'${property_row[3]:,.2f}' if property_row[3] else 'Unknown'
-    }
-    
-    c.execute("SELECT * FROM heirs WHERE property_id = ?", (property_id,))
-    heir_rows = c.fetchall()
-    
-    heir_data = []
-    for heir_row in heir_rows:
-        heir_data.append({
-            'name': heir_row[2],
-            'relationship': heir_row[3]
-        })
-    
-    conn.close()
-    
+    try:
+        c = conn.cursor()
+
+        c.execute("SELECT * FROM properties WHERE id = ?", (property_id,))
+        property_row = c.fetchone()
+
+        if not property_row:
+            return jsonify({'error': 'Property not found'}), 404
+
+        property_data = {
+            'address': property_row[1],
+            'owner_name': property_row[2],
+            'property_value': f'${property_row[3]:,.2f}' if property_row[3] else 'Unknown'
+        }
+
+        c.execute("SELECT * FROM heirs WHERE property_id = ?", (property_id,))
+        heir_rows = c.fetchall()
+
+        heir_data = []
+        for heir_row in heir_rows:
+            heir_data.append({
+                'name': heir_row[2],
+                'relationship': heir_row[3]
+            })
+    finally:
+        conn.close()
+
     if doc_type == 'affidavit':
         # Generate text-based affidavit
         content = f"""
@@ -677,32 +685,33 @@ def get_pdf_list():
 def get_pdf_analysis(pdf_id):
     """Get detailed analysis of a specific PDF"""
     conn = sqlite3.connect('genealogy.db')
-    c = conn.cursor()
-    
-    c.execute("SELECT * FROM pdf_documents WHERE id = ?", (pdf_id,))
-    pdf_row = c.fetchone()
-    
-    if not pdf_row:
-        return jsonify({'error': 'PDF not found'}), 404
-    
-    conn.close()
-    
     try:
-        analyzed_data = json.loads(pdf_row[5]) if pdf_row[5] else {}
-    except:
-        analyzed_data = {}
-    
-    return jsonify({
-        'pdf_info': {
-            'id': pdf_row[0],
-            'filename': pdf_row[1],
-            'original_name': pdf_row[2],
-            'source_type': pdf_row[6],
-            'created_at': pdf_row[7]
-        },
-        'extracted_text': pdf_row[4][:1000] + '...' if pdf_row[4] and len(pdf_row[4]) > 1000 else pdf_row[4],
-        'analyzed_data': analyzed_data
-    })
+        c = conn.cursor()
+
+        c.execute("SELECT * FROM pdf_documents WHERE id = ?", (pdf_id,))
+        pdf_row = c.fetchone()
+
+        if not pdf_row:
+            return jsonify({'error': 'PDF not found'}), 404
+
+        try:
+            analyzed_data = json.loads(pdf_row[5]) if pdf_row[5] else {}
+        except:
+            analyzed_data = {}
+
+        return jsonify({
+            'pdf_info': {
+                'id': pdf_row[0],
+                'filename': pdf_row[1],
+                'original_name': pdf_row[2],
+                'source_type': pdf_row[6],
+                'created_at': pdf_row[7]
+            },
+            'extracted_text': pdf_row[4][:1000] + '...' if pdf_row[4] and len(pdf_row[4]) > 1000 else pdf_row[4],
+            'analyzed_data': analyzed_data
+        })
+    finally:
+        conn.close()
 
 @app.route('/api/analytics')
 def get_analytics():

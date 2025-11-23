@@ -83,11 +83,13 @@ ai-genealogy-platform/
 ## API Endpoints
 
 - `GET /` - Main application interface
-- `POST /upload` - Upload overage data files
-- `POST /upload-pdf` - Upload PDF documents for analysis
+- `POST /api/upload` - Upload overage data files
+- `POST /api/upload-pdf` - Upload PDF documents for analysis
 - `POST /api/research` - Start AI research on person/property
 - `POST /api/generate-document` - Generate legal documents
 - `GET /api/properties` - Get all properties
+- `GET /api/pdf-list` - Get list of uploaded PDFs
+- `GET /api/pdf-analysis/<id>` - Get detailed PDF analysis
 - `GET /api/analytics` - Get system analytics
 
 ## Database Schema
